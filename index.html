@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>درس تعاملی تفسیر نظام‌مند ECG</title>
+
+  <style>
+    :root {
+      --primary: #155e75;
+      --primary-light: #e0f2fe;
+      --success: #166534;
+      --success-bg: #dcfce7;
+      --error: #991b1b;
+      --error-bg: #fee2e2;
+      --text: #172033;
+      --muted: #64748b;
+      --border: #dbe3ec;
+      --surface: #ffffff;
+      --background: #f3f6fa;
+      --highlight: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--background);
+      color: var(--text);
+      font-family: Tahoma, Arial, sans-serif;
+      line-height: 1.9;
+      font-size: 15px;
+    }
+
+    button, input, textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:focus-visible,
+    textarea:focus-visible,
+    input:focus-visible {
+      outline: 3px solid #38bdf8;
+      outline-offset: 3px;
+    }
+
+    .app {
+      max-width: 1050px;
+      margin: auto;
+      padding: 18px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #164e63, #0f766e);
+      color: white;
+      padding: 26px;
+      border-radius: 18px;
+      margin-bottom: 18px;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(22px, 4vw, 30px);
+    }
+
+    header p {
+      margin: 0;
+      opacity: .95;
+    }
+
+    .notice {
+      background: #fff7ed;
+      color: #9a3412;
+      border: 1px solid #fed7aa;
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin: 14px 0;
+    }
+
+    .progress-card,
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 7px #0f172a08;
+    }
+
+    .progress-line {
+      height: 10px;
+      border-radius: 99px;
+      background: #e2e8f0;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+
+    .progress-fill {
+      width: 0;
+      height: 100%;
+      background: #0d9488;
+      transition: width .2s;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .section-nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: 14px 0;
+    }
+
+    .nav-btn {
+      border: 1px solid var(--border);
+      background: white;
+      border-radius: 10px;
+      padding: 8px 12px;
+      color: var(--text);
+    }
+
+    .nav-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .nav-btn.done::after {
+      content: " ✓";
+      color: #16a34a;
+      font-weight: bold;
+    }
+
+    .nav-btn.active.done::after {
+      color: #bbf7d0;
+    }
+
+    .step-title {
+      margin-top: 0;
+      font-size: 23px;
+      color: var(--primary);
+    }
+
+    .ecg-frame {
+      border: 1px solid #e2b8c0;
+      border-radius: 12px;
+      overflow: hidden;
+      margin: 16px 0;
+      background: #fff9fa;
+    }
+
+    .ecg-frame svg {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .ecg-caption {
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #7f1d1d;
+      background: #fff1f2;
+      border-top: 1px solid #fecdd3;
+    }
+
+    .highlight-legend {
+      display: inline-block;
+      border: 2px solid var(--highlight);
+      border-radius: 5px;
+      padding: 2px 8px;
+      font-size: 12px;
+      margin: 6px 0;
+      color: #92400e;
+      background: #fffbeb;
+    }
+
+    .callout {
+      background: #f0f9ff;
+      border-right: 4px solid #0284c7;
+      border-radius: 8px;
+      padding: 12px 15px;
+      margin: 12px 0;
+    }
+
+    .question {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 18px;
+    }
+
+    .question h3 {
+      margin-top: 0;
+    }
+
+    .option {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px;
+      margin: 8px 0;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      background: white;
+      cursor: pointer;
+    }
+
+    .option:hover {
+      background: #f0f9ff;
+    }
+
+    .option input {
+      margin-top: 7px;
+      flex-shrink: 0;
+    }
+
+    .feedback {
+      display: none;
+      margin-top: 14px;
+      padding: 14px;
+      border-radius: 10px;
+    }
+
+    .feedback.show {
+      display: block;
+    }
+
+    .feedback.correct {
+      background: var(--success-bg);
+      color: var(--success);
+    }
+
+    .feedback.incorrect {
+      background: var(--error-bg);
+      color: var(--error);
+    }
+
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 18px;
+      margin: 5px 0;
+    }
+
+    .btn.secondary {
+      background: #e2e8f0;
+      color: #334155;
+    }
+
+    .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 115px;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      resize: vertical;
+      background: white;
+    }
+
+    .answer-box {
+      display: none;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      padding: 14px;
+      border-radius: 10px;
+      margin-top: 12px;
+    }
+
+    .answer-box.show {
+      display: block;
+    }
+
+    .final-case {
+      border-top: 1px solid var(--border);
+      padding-top: 18px;
+      margin-top: 18px;
+    }
+
+    .final-case:first-of-type {
+      border-top: 0;
+    }
+
+    .score {
+      font-weight: bold;
+      color: var(--primary);
+    }
+
+    footer {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: center;
+      padding: 18px 0;
+    }
+
+    @media (max-width: 600px) {
+      .app {
+        padding: 10px;
+      }
+
+      header, .card, .progress-card {
+        padding: 15px;
+      }
+
+      .step-title {
+        font-size: 20px;
+      }
+
+      .nav-btn {
+        font-size: 12px;
+        padding: 7px 9px;
+      }
+    }
+
+    @media print {
+      body {
+        background: white;
+      }
+
+      .section-nav, .actions, .btn {
+        display: none !important;
+      }
+
+      .card, .progress-card {
+        box-shadow: none;
+        break-inside: avoid;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<div class="app">
+
+  <header>
+    <h1>تفسیر نظام‌مند نوار قلب ۱۲ لید</h1>
+    <p>درس تعاملی برای کارآموزان پزشکی در بخش قلب</p>
+    <p class="muted" style="color:#dbeafe">
+      شش مرحله آموزشی، شش پرسش خودآزمایی و پنج نوار برای تفسیر مستقل
+    </p>
+  </header>
+
+  <div class="notice">
+    <strong>توجه آموزشی:</strong>
+    تمام نوارها و سناریوها فرضی و شماتیک هستند؛ برای تشخیص واقعی یا تصمیم‌گیری درمانی استفاده نشوند.
+    نوارهای SVG بازسازی ساده موج‌ها هستند و جایگزین ECG بالینی نیستند.
+  </div>
+
+  <section class="progress-card">
+    <strong>پیشرفت درس</strong>
+    <div class="progress-line">
+      <div class="progress-fill" id="progressFill"></div>
+    </div>
+    <div class="muted" id="progressText">۰ از ۶ مرحله تکمیل شده است.</div>
+    <div class="section-nav" id="sectionNav"></div>
+  </section>
+
+  <main id="lesson"></main>
+
+  <section class="card" id="finalExam">
+    <h2 class="step-title">آزمون پایانی: تفسیر مستقل پنج نوار</h2>
+    <p>
+      هر نوار را از ابتدا تا انتها بررسی کنید. پاسخ خود را شامل ریتم، تعداد ضربان،
+      محور، فواصل، موج‌ها، قطعه ST و جمع‌بندی بنویسید.
+    </p>
+    <p class="muted">
+      پس از ثبت پاسخ، بازخورد و یک پاسخ نمونه نمایش داده می‌شود.
+      برای ارزیابی نهایی، پاسخ‌ها را با معیارهای استاد تطبیق دهید.
+    </p>
+
+    <div id="finalCases"></div>
+
+    <div class="actions">
+      <button class="btn" id="finishExam">ثبت پایان آزمون</button>
+      <button class="btn secondary" id="resetProgress">پاک کردن پیشرفت</button>
+    </div>
+    <div id="examSummary" class="feedback"></div>
+  </section>
+
+  <footer>
+    محتوای آموزشی فرضی؛ نیازمند بازبینی استاد برای استفاده رسمی در آموزش بالینی.
+  </footer>
+</div>
+
+<script>
+"use strict";
+
+/* -------------------------------------------------------
+   داده‌های آموزشی
+------------------------------------------------------- */
+
+const lessons = [
+  {
+    title: "مرحله ۱: ریتم",
+    focus: "موج P، رابطه P و QRS و نظم فواصل R-R",
+    explanation: `
+      <p>ابتدا منظم یا نامنظم بودن فواصل R-R را بررسی کنید. سپس به دنبال موج P بگردید
+      و رابطه آن را با QRS بسنجید.</p>
+      <ul>
+        <li>ریتم سینوسی: موج P معمولاً در لید II مثبت و در aVR منفی است.</li>
+        <li>در ریتم سینوسی، هر موج P معمولاً با یک QRS دنبال می‌شود.</li>
+        <li>فیبریلاسیون دهلیزی: موج P مشخص وجود ندارد و فواصل R-R معمولاً نامنظم‌اند.</li>
+        <li>بلوک کامل AV: فعالیت دهلیزی و بطنی مستقل از یکدیگر است.</li>
+      </ul>
+    `,
+    note: "در این نوار، هر موج P پیش از QRS قرار گرفته و فاصله‌های R-R تقریباً برابرند.",
+    question: "کدام یافته بیشترین تطابق را با ریتم سینوسی دارد؟",
+    options: [
+      "نبود موج P و فواصل R-R نامنظم",
+      "موج P با شکل ثابت و رابطه منظم با QRS",
+      "موج P و QRS کاملاً مستقل از یکدیگر",
+      "QRS پهن و بدون فعالیت دهلیزی"
+    ],
+    correct: 1,
+    feedback: "در ریتم سینوسی، موج P با منشأ سینوسی پیش از QRS دیده می‌شود و رابطه دهلیزی‌بطنی منظم است.",
+    highlight: [95, 230]
+  },
+  {
+    title: "مرحله ۲: تعداد ضربان",
+    focus: "محاسبه ضربان از فاصله R-R",
+    explanation: `
+      <p>در ریتم منظم و سرعت کاغذ ۲۵ میلی‌متر بر ثانیه:</p>
+      <ul>
+        <li>ضربان تقریبی = ۳۰۰ تقسیم بر تعداد مربع‌های بزرگ بین دو R.</li>
+        <li>یا ۱۵۰۰ تقسیم بر تعداد مربع‌های کوچک بین دو R.</li>
+        <li>در ریتم نامنظم، تعداد QRS را در ۱۰ ثانیه بشمارید و در ۶ ضرب کنید.</li>
+      </ul>
+    `,
+    note: "فاصله R-R در این نمونه حدود چهار مربع بزرگ است؛ ضربان تقریبی ۷۵ در دقیقه خواهد بود.",
+    question: "اگر فاصله دو موج R برابر چهار مربع بزرگ باشد، ضربان تقریبی چند است؟",
+    options: ["۵۰ در دقیقه", "۷۵ در دقیقه", "۱۰۰ در دقیقه", "۱۵۰ در دقیقه"],
+    correct: 1,
+    feedback: "۳۰۰ تقسیم بر ۴ برابر ۷۵ ضربه در دقیقه است.",
+    highlight: [150, 350]
+  },
+  {
+    title: "مرحله ۳: محور الکتریکی",
+    focus: "قطبیت QRS در لیدهای I و aVF",
+    explanation: `
+      <p>برای تخمین سریع محور QRS:</p>
+      <ul>
+        <li>I مثبت و aVF مثبت: محور معمولاً طبیعی است.</li>
+        <li>I مثبت و aVF منفی: محور طبیعی یا انحراف به چپ؛ لید II کمک‌کننده است.</li>
+        <li>I منفی و aVF مثبت: انحراف به راست.</li>
+        <li>I منفی و aVF منفی: محور شدیداً غیرطبیعی.</li>
+      </ul>
+      <p>در این درس، محور با توصیف فرضی لیدها ارائه می‌شود؛ شکل شماتیک یک لید، محور واقعی را تعیین نمی‌کند.</p>
+    `,
+    note: "در این نمونه فرضی، QRS در لید I و aVF مثبت است؛ این الگو با محور طبیعی سازگار است.",
+    question: "QRS در لید I و aVF هر دو مثبت است. محتمل‌ترین نتیجه چیست؟",
+    options: ["محور طبیعی", "انحراف محور به راست", "محور شمال‌غربی", "تشخیص قطعی بلوک شاخه چپ"],
+    correct: 0,
+    feedback: "مثبت بودن QRS در هر دو لید I و aVF معمولاً نشان‌دهنده محور طبیعی است.",
+    highlight: [355, 490]
+  },
+  {
+    title: "مرحله ۴: فواصل",
+    focus: "اندازه‌گیری PR، QRS و QT",
+    explanation: `
+      <p>در سرعت استاندارد کاغذ:</p>
+      <ul>
+        <li>PR معمولاً ۱۲۰ تا ۲۰۰ میلی‌ثانیه است.</li>
+        <li>QRS معمولاً کمتر از ۱۲۰ میلی‌ثانیه است.</li>
+        <li>QT باید با ضربان قلب تطبیق داده شود؛ QTc طولانی نیازمند بررسی است.</li>
+      </ul>
+      <p>PR طولانی با هدایت یک‌به‌یک می‌تواند نشان‌دهنده بلوک AV درجه اول باشد.</p>
+    `,
+    note: "فاصله PR در این نمونه فرضی ۲۴۰ میلی‌ثانیه است؛ QRS باریک و هدایت یک‌به‌یک وجود دارد.",
+    question: "PR برابر ۲۴۰ میلی‌ثانیه است و همه Pها به QRS منتهی می‌شوند. تشخیص چیست؟",
+    options: ["بلوک AV درجه اول", "بلوک AV کامل", "بلوک شاخه راست", "فیبریلاسیون دهلیزی"],
+    correct: 0,
+    feedback: "PR بیش از ۲۰۰ میلی‌ثانیه با هدایت یک‌به‌یک، با بلوک AV درجه اول سازگار است.",
+    highlight: [95, 235]
+  },
+  {
+    title: "مرحله ۵: موج‌ها و کمپلکس‌ها",
+    focus: "موج P، کمپلکس QRS، موج T و موج Q",
+    explanation: `
+      <p>موج P نمایانگر دپولاریزاسیون دهلیزها، QRS نمایانگر دپولاریزاسیون بطن‌ها
+      و موج T نمایانگر رپولاریزاسیون بطن‌هاست.</p>
+      <p>موج Q پاتولوژیک باید بر اساس پهنا، عمق، لید و زمینه بالینی ارزیابی شود.
+      هر موج Q به معنای انفارکتوس قدیمی نیست.</p>
+    `,
+    note: "در نمونه، QRS باریک و موج T مثبت است. این یافته‌ها به‌تنهایی تشخیص بیماری خاصی نمی‌دهند.",
+    question: "موج T عمدتاً نمایانگر کدام فرایند است؟",
+    options: ["دپولاریزاسیون دهلیز", "دپولاریزاسیون بطن", "رپولاریزاسیون بطن", "هدایت دهلیزی‌بطنی"],
+    correct: 2,
+    feedback: "موج T عمدتاً نمایانگر رپولاریزاسیون بطن‌هاست.",
+    highlight: [235, 315]
+  },
+  {
+    title: "مرحله ۶: قطعه ST",
+    focus: "بالا یا پایین رفتن ST و تغییرات لیدهای مجاور",
+    explanation: `
+      <p>قطعه ST از پایان QRS تا شروع موج T امتداد دارد و در شرایط طبیعی تقریباً
+      هم‌سطح خط پایه است.</p>
+      <ul>
+        <li>تغییر ST باید در لیدهای مجاور بررسی شود.</li>
+        <li>علائم بیمار، تغییرات متقابل و ECG قبلی اهمیت دارند.</li>
+        <li>هر بالا رفتن ST به معنای STEMI نیست.</li>
+        <li>در درد قفسه سینه همراه با تغییرات ایسکمیک جدید، ارزیابی فوری لازم است.</li>
+      </ul>
+    `,
+    note: "در این نمونه فرضی، ST در چند لید مجاور بالا رفته است؛ در زمینه درد قفسه سینه باید احتمال آسیب حاد کرونری بررسی شود.",
+    question: "بالا رفتن جدید ST در لیدهای مجاور همراه با درد قفسه سینه چه اقدامی را ایجاب می‌کند؟",
+    options: [
+      "نادیده گرفتن یافته",
+      "ارزیابی فوری بالینی و بررسی سندرم کرونری حاد",
+      "تشخیص قطعی پریکاردیت بدون بررسی بیشتر",
+      "تشخیص قطعی هیپوکالمی"
+    ],
+    correct: 1,
+    feedback: "تغییرات جدید ST همراه با علائم هشدار نیازمند ارزیابی فوری است؛ تشخیص نهایی به مجموعه یافته‌ها بستگی دارد.",
+    highlight: [235, 280]
+  }
+];
+
+/* -------------------------------------------------------
+   پنج سناریوی پایانی
+------------------------------------------------------- */
+
+const finalCases = [
+  {
+    title: "نوار ۱: ریتم نامنظم",
+    desc: "بیمار فرضی با تپش قلب؛ ضربان بطنی متغیر، QRS باریک و موج P مشخص دیده نمی‌شود.",
+    type: "af",
+    answer: "ریتم نامنظمِ نامنظم، نبود موج P مشخص و QRS باریک؛ یافته‌ها با فیبریلاسیون دهلیزی سازگارند. تعداد ضربان باید از نوار واقعی محاسبه شود."
+  },
+  {
+    title: "نوار ۲: استقلال دهلیز و بطن",
+    desc: "موج‌های P با سرعت بیشتر از QRS ظاهر می‌شوند و ارتباط ثابتی میان P و QRS وجود ندارد.",
+    type: "block",
+    answer: "یافته‌ها با بلوک کامل AV (درجه سه) سازگارند: فعالیت دهلیزی و بطنی مستقل است و معمولاً یک ریتم فرار بطنی یا جانکشنال دیده می‌شود. در بیمار واقعی، ارزیابی فوری لازم است."
+  },
+  {
+    title: "نوار ۳: تغییرات ST",
+    desc: "بیمار فرضی با درد قفسه سینه؛ بالا رفتن ST در II، III و aVF و افت متقابل در I و aVL.",
+    type: "st",
+    answer: "الگوی سازگار با STEMI تحتانی در زمینه بالینی فرض‌شده. باید معیارهای لیدهای مجاور، علائم و پروتکل اورژانسی بررسی شوند."
+  },
+  {
+    title: "نوار ۴: QRS پهن",
+    desc: "ریتم سینوسی؛ QRS پهن، الگوی rSR′ در V1 و موج S انتهایی پهن در I و V6.",
+    type: "rbbb",
+    answer: "الگوی بلوک کامل شاخه راست (RBBB): QRS حداقل ۱۲۰ میلی‌ثانیه، rSR′ در V1 و موج S انتهایی پهن در لیدهای جانبی."
+  },
+  {
+    title: "نوار ۵: موج T نوک‌تیز",
+    desc: "بیمار فرضی با بیماری کلیوی؛ موج‌های T بلند و نوک‌تیز در چند لید و احتمال کاهش دامنه P.",
+    type: "hyper",
+    answer: "تغییرات سازگار با هیپرکالمی هستند، اما ECG به‌تنهایی مقدار پتاسیم را مشخص نمی‌کند. در بیمار واقعی، ارزیابی فوری بالینی و آزمایشگاهی لازم است."
+  }
+];
+
+/* -------------------------------------------------------
+   تولید نوار قلب SVG با شبکه استاندارد
+------------------------------------------------------- */
+
+function makeECG(type = "normal", highlight = null) {
+  const width = 800;
+  const height = 260;
+  const baseline = 150;
+  const cycle = 190;
+  let path = "";
+
+  function add(x, y) {
+    path += `${path ? " L" : "M"} ${x.toFixed(1)} ${y.toFixed(1)}`;
+  }
+
+  for (let start = 20; start < width; start += cycle) {
+    if (type === "af") {
+      add(start, baseline);
+      add(start + 25, baseline + 3);
+      add(start + 45, baseline - 2);
+      add(start + 60, baseline + 2);
+      add(start + 75, baseline);
+      add(start + 82, baseline - 10);
+      add(start + 88, baseline + 15);
+      add(start + 95, baseline - 55);
+      add(start + 101, baseline + 22);
+      add(start + 108, baseline);
+      add(start + 130, baseline + 2);
+      add(start + 145, baseline - 1);
+      add(start + 155, baseline);
+    } else if (type === "block") {
+      add(start, baseline);
+      add(start + 15, baseline - 25);
+      add(start + 30, baseline);
+      add(start + 65, baseline);
+      add(start + 75, baseline + 8);
+      add(start + 85, baseline - 18);
+      add(start + 95, baseline + 10);
+      add(start + 110, baseline);
+      add(start + 120, baseline);
+      add(start + 125, baseline - 45);
+      add(start + 132, baseline + 30);
+      add(start + 140, baseline);
+    } else if (type === "st") {
+      add(start, baseline);
+      add(start + 20, baseline - 25);
+      add(start + 35, baseline);
+      add(start + 48, baseline + 5);
+      add(start + 55, baseline - 55);
+      add(start + 62, baseline + 10);
+      add(start + 75, baseline - 20);
+      add(start + 110, baseline - 20);
+      add(start + 130, baseline - 5);
+      add(start + 155, baseline);
+    } else if (type === "rbbb") {
+      add(start, baseline);
+      add(start + 20, baseline - 25);
+      add(start + 35, baseline);
+      add(start + 50, baseline + 8);
+      add(start + 60, baseline - 50);
+      add(start + 75, baseline + 25);
+      add(start + 90, baseline - 35);
+      add(start + 110, baseline);
+      add(start + 130, baseline + 20);
+      add(start + 155, baseline);
+    } else if (type === "hyper") {
+      add(start, baseline);
+      add(start + 20, baseline - 15);
+      add(start + 35, baseline);
+      add(start + 50, baseline + 5);
+      add(start + 60, baseline - 45);
+      add(start + 70, baseline + 20);
+      add(start + 90, baseline - 70);
+      add(start + 110, baseline);
+      add(start + 140, baseline);
+    } else {
+      add(start, baseline);
+      add(start + 15, baseline);
+      add(start + 25, baseline - 12);
+      add(start + 35, baseline);
+      add(start + 45, baseline);
+      add(start + 53, baseline + 8);
+      add(start + 60, baseline - 55);
+      add(start + 67, baseline + 15);
+      add(start + 75, baseline);
+      add(start + 95, baseline);
+      add(start + 115, baseline - 25);
+      add(start + 135, baseline);
+      add(start + 155, baseline);
+    }
+  }
+
+  let grid = "";
+  for (let x = 0; x <= width; x += 4) {
+    const major = x % 20 === 0;
+    grid += `<line x1="${x}" y1="0" x2="${x}" y2="${height}"
+      stroke="${major ? "#e9a7b1" : "#f6dce0"}"
+      stroke-width="${major ? 0.9 : 0.35}"/>`;
+  }
+
+  for (let y = 0; y <= height; y += 4) {
+    const major = y % 20 === 0;
+    grid += `<line x1="0" y1="${y}" x2="${width}" y2="${y}"
+      stroke="${major ? "#e9a7b1" : "#f6dce0"}"
+      stroke-width="${major ? 0.9 : 0.35}"/>`;
+  }
+
+  let highlightSVG = "";
+  if (highlight) {
+    highlightSVG = `
+      <rect x="${highlight[0]}" y="30"
+        width="${highlight[1] - highlight[0]}" height="190"
+        fill="#f59e0b" opacity="0.14"/>
+      <rect x="${highlight[0]}" y="30"
+        width="${highlight[1] - highlight[0]}" height="190"
+        fill="none" stroke="#d97706" stroke-width="2.5"
+        stroke-dasharray="7 4"/>
+    `;
+  }
+
+  return `
+    <svg viewBox="0 0 ${width} ${height}" role="img"
+         aria-label="نوار قلب شماتیک روی کاغذ شطرنجی">
+      <rect width="${width}" height="${height}" fill="#fff9fa"/>
+      ${grid}
+      ${highlightSVG}
+      <path d="${path}" fill="none" stroke="#b91c1c"
+        stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+      <text x="780" y="18" text-anchor="end" font-size="12"
+        fill="#7f1d1d">۲۵ mm/s | ۱۰ mm/mV</text>
+    </svg>
+  `;
+}
+
+function ecgHTML(type, highlight, caption) {
+  return `
+    <div class="ecg-frame">
+      ${makeECG(type, highlight)}
+      <div class="ecg-caption">${caption}</div>
+    </div>
+  `;
+}
+
+/* -------------------------------------------------------
+   مدیریت پیشرفت در مرورگر
+------------------------------------------------------- */
+
+const STORAGE_KEY = "ecg_lesson_progress_v1";
+
+let state = {
+  completed: [],
+  answers: {},
+  finalAnswers: {},
+  revealed: []
+};
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      state = { ...state, ...JSON.parse(saved) };
+    }
+  } catch (e) {
+    console.warn("ذخیره پیشرفت در دسترس نیست.", e);
+  }
+}
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (e) {
+    console.warn("ذخیره پیشرفت ناموفق بود.", e);
+  }
+}
+
+function renderProgress() {
+  const completed = state.completed.length;
+  const percent = Math.round(completed / lessons.length * 100);
+
+  document.getElementById("progressFill").style.width = percent + "%";
+  document.getElementById("progressText").textContent =
+    `${completed} از ${lessons.length} مرحله تکمیل شده است.`;
+
+  document.querySelectorAll(".nav-btn").forEach((btn, i) => {
+    btn.classList.toggle("done", state.completed.includes(i));
+  });
+}
+
+/* -------------------------------------------------------
+   ناوبری و نمایش درس
+------------------------------------------------------- */
+
+let currentStep = 0;
+
+function renderNav() {
+  const nav = document.getElementById("sectionNav");
+  nav.innerHTML = lessons.map((lesson, i) => `
+    <button class="nav-btn ${i === currentStep ? "active" : ""} ${state.completed.includes(i) ? "done" : ""}"
+      data-step="${i}">
+      ${i + 1}. ${lesson.title.replace(/^مرحله \d+: /, "")}
+    </button>
+  `).join("");
+
+  nav.querySelectorAll("button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      currentStep = Number(btn.dataset.step);
+      renderLesson();
+    });
+  });
+}
+
+function renderLesson() {
+  const lesson = lessons[currentStep];
+  const savedAnswer = state.answers[currentStep];
+  const isCorrect = savedAnswer === lesson.correct;
+
+  document.getElementById("lesson").innerHTML = `
+    <section class="card">
+      <h2 class="step-title">${lesson.title}</h2>
+      <p><strong>تمرکز:</strong> ${lesson.focus}</p>
+
+      ${lesson.explanation}
+
+      <div class="callout">
+        <strong>یافته مورد توجه:</strong>
+        ${lesson.note}
+      </div>
+
+      ${ecgHTML("normal", null, "نوار شماتیک آموزشی؛ برای تحلیل دقیق‌تر به شرح سناریو توجه کنید.")}
+
+      <div class="question">
+        <h3>خودآزمایی</h3>
+        <p>${lesson.question}</p>
+
+        ${lesson.options.map((option, i) => `
+          <label class="option">
+            <input type="radio" name="lessonAnswer" value="${i}"
+              ${savedAnswer === i ? "checked" : ""}>
+            <span>${String.fromCharCode(0x627 + i)}. ${option}</span>
+          </label>
+        `).join("")}
+
+        <button class="btn" id="checkAnswer">بررسی پاسخ</button>
+        <div id="lessonFeedback" class="feedback ${savedAnswer !== undefined ? "show" : ""} ${isCorrect ? "correct" : "incorrect"}">
+          ${savedAnswer !== undefined ? lesson.feedback : ""}
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn secondary" id="prevStep" ${currentStep === 0 ? "disabled" : ""}>مرحله قبل</button>
+        <button class="btn" id="nextStep" ${currentStep === lessons.length - 1 ? "disabled" : ""}>مرحله بعد</button>
+      </div>
+    </section>
+  `;
+
+  document.getElementById("checkAnswer").addEventListener("click", () => {
+    const selected = document.querySelector('input[name="lessonAnswer"]:checked');
+
+    if (!selected) {
+      alert("لطفاً یک گزینه را انتخاب کنید.");
+      return;
+    }
+
+    const answer = Number(selected.value);
+    state.answers[currentStep] = answer;
+
+    if (answer === lesson.correct && !state.completed.includes(currentStep)) {
+      state.completed.push(currentStep);
+    }
+
+    saveState();
+    renderLesson();
+    renderProgress();
+  });
+
+  document.getElementById("prevStep").addEventListener("click", () => {
+    if (currentStep > 0) {
+      currentStep--;
+      renderLesson();
+    }
+  });
+
+  document.getElementById("nextStep").addEventListener("click", () => {
+    if (currentStep < lessons.length - 1) {
+      currentStep++;
+      renderLesson();
+    }
+  });
+
+  renderNav();
+  renderProgress();
+}
+
+/* -------------------------------------------------------
+   آزمون پایانی: پاسخ آزاد و بازخورد
+------------------------------------------------------- */
+
+function renderFinalCases() {
+  const container = document.getElementById("finalCases");
+
+  container.innerHTML = finalCases.map((item, i) => `
+    <div class="final-case">
+      <h3>${item.title}</h3>
+      <p>${item.desc}</p>
+      ${ecgHTML(item.type, null, "نوار شماتیک؛ تشخیص را با توجه به سناریو و یافته‌ها بیان کنید.")}
+
+      <label for="finalAnswer${i}"><strong>تفسیر شما:</strong></label>
+      <textarea id="finalAnswer${i}" placeholder="ریتم، ضربان، محور، فواصل، موج‌ها، ST و جمع‌بندی...">${state.finalAnswers[i] || ""}</textarea>
+
+      <div class="actions">
+        <button class="btn" data-save-final="${i}">ثبت پاسخ و دریافت بازخورد</button>
+        <button class="btn secondary" data-reveal="${i}">نمایش پاسخ نمونه</button>
+      </div>
+
+      <div id="finalFeedback${i}" class="feedback"></div>
+      <div id="finalAnswerBox${i}" class="answer-box ${state.revealed.includes(i) ? "show" : ""}">
+        <strong>پاسخ نمونه:</strong>
+        <p>${item.answer}</p>
+      </div>
+    </div>
+  `).join("");
+
+  container.querySelectorAll("[data-save-final]").forEach(button => {
+    button.addEventListener("click", () => {
+      const i = Number(button.dataset.saveFinal);
+      const input = document.getElementById("finalAnswer" + i);
+      const answer = input.value.trim();
+
+      if (!answer) {
+        alert("ابتدا تفسیر خود را بنویسید.");
+        return;
+      }
+
+      state.finalAnswers[i] = answer;
+      saveState();
+
+      const feedback = document.getElementById("finalFeedback" + i);
+      feedback.className = "feedback show correct";
+      feedback.innerHTML = `
+        <strong>پاسخ ثبت شد.</strong>
+        <p>اکنون پاسخ نمونه را با تفسیر خود مقایسه کنید و بررسی کنید که آیا ریتم،
+        فواصل، یافته اصلی و اهمیت بالینی را پوشش داده‌اید.</p>
+      `;
+
+      document.getElementById("finalAnswerBox" + i).classList.add("show");
+      if (!state.revealed.includes(i)) {
+        state.revealed.push(i);
+      }
+      saveState();
+    });
+  });
+
+  container.querySelectorAll("[data-reveal]").forEach(button => {
+    button.addEventListener("click", () => {
+      const i = Number(button.dataset.reveal);
+      document.getElementById("finalAnswerBox" + i).classList.add("show");
+
+      if (!state.revealed.includes(i)) {
+        state.revealed.push(i);
+      }
+      saveState();
+    });
+  });
+}
+
+/* -------------------------------------------------------
+   پایان آزمون و پاک کردن پیشرفت
+------------------------------------------------------- */
+
+document.getElementById("finishExam").addEventListener("click", () => {
+  const answered = finalCases.filter((_, i) =>
+    (state.finalAnswers[i] || "").trim().length > 0
+  ).length;
+
+  const summary = document.getElementById("examSummary");
+  summary.className = "feedback show correct";
+  summary.innerHTML = `
+    <strong>پایان آزمون</strong>
+    <p>از پنج نوار، ${answered} پاسخ ثبت شده است.</p>
+    <p>برای ارزیابی دقیق، هر پاسخ را با معیارهای استاد تطبیق دهید.
+    تشخیص موارد اورژانسی باید با توجه به علائم و شرایط بالینی انجام شود.</p>
+  `;
+});
+
+document.getElementById("resetProgress").addEventListener("click", () => {
+  const confirmed = confirm("آیا مطمئن هستید که می‌خواهید تمام پیشرفت و پاسخ‌ها پاک شوند؟");
+  if (!confirmed) return;
+
+  localStorage.removeItem(STORAGE_KEY);
+
+  state = {
+    completed: [],
+    answers: {},
+    finalAnswers: {},
+    revealed: []
+  };
+
+  currentStep = 0;
+  renderLesson();
+  renderFinalCases();
+  renderProgress();
+});
+
+/* -------------------------------------------------------
+   شروع
+------------------------------------------------------- */
+
+loadState();
+renderLesson();
+renderFinalCases();
+renderProgress();
+</script>
+</body>
+</html>
